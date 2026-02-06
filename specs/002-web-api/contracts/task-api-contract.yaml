@@ -1,0 +1,178 @@
+# Task API Contract
+
+## Overview
+OpenAPI contract for the Task management API endpoints.
+
+## Endpoints
+
+### POST /tasks
+**Description**: Create a new task
+
+#### Request
+```
+POST /tasks
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "title": "Task title",
+  "description": "Optional task description"
+}
+```
+
+**Validation**:
+- `title`: Required, 1-100 characters
+- `description`: Optional, max 500 characters
+
+#### Response
+**Success (201)**:
+```json
+{
+  "id": "uuid-string",
+  "title": "Task title",
+  "description": "Optional task description",
+  "is_completed": false,
+  "created_at": "2026-02-06T10:00:00Z"
+}
+```
+
+**Validation Error (422)**:
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", "title"],
+      "msg": "Field required",
+      "type": "missing"
+    }
+  ]
+}
+```
+
+### GET /tasks
+**Description**: List all tasks
+
+#### Request
+```
+GET /tasks?skip=0&limit=10&completed=false
+```
+
+**Query Parameters**:
+- `skip`: Optional integer, default 0
+- `limit`: Optional integer, default 100
+- `completed`: Optional boolean, filter by completion status
+
+#### Response
+**Success (200)**:
+```json
+[
+  {
+    "id": "uuid-string",
+    "title": "Task title",
+    "description": "Optional task description",
+    "is_completed": false,
+    "created_at": "2026-02-06T10:00:00Z"
+  }
+]
+```
+
+### GET /tasks/{id}
+**Description**: Get a specific task by ID
+
+#### Request
+```
+GET /tasks/{id}
+```
+
+**Path Parameter**:
+- `id`: UUID string of the task
+
+#### Response
+**Success (200)**:
+```json
+{
+  "id": "uuid-string",
+  "title": "Task title",
+  "description": "Optional task description",
+  "is_completed": false,
+  "created_at": "2026-02-06T10:00:00Z"
+}
+```
+
+**Not Found (404)**:
+```json
+{
+  "detail": "Task not found"
+}
+```
+
+### PATCH /tasks/{id}
+**Description**: Update a specific task
+
+#### Request
+```
+PATCH /tasks/{id}
+Content-Type: application/json
+```
+
+**Path Parameter**:
+- `id`: UUID string of the task
+
+**Body** (all fields optional):
+```json
+{
+  "title": "Updated task title",
+  "description": "Updated task description",
+  "is_completed": true
+}
+```
+
+#### Response
+**Success (200)**:
+```json
+{
+  "id": "uuid-string",
+  "title": "Updated task title",
+  "description": "Updated task description",
+  "is_completed": true,
+  "created_at": "2026-02-06T10:00:00Z"
+}
+```
+
+**Not Found (404)**:
+```json
+{
+  "detail": "Task not found"
+}
+```
+
+### DELETE /tasks/{id}
+**Description**: Delete a specific task
+
+#### Request
+```
+DELETE /tasks/{id}
+```
+
+**Path Parameter**:
+- `id`: UUID string of the task
+
+#### Response
+**Success (204)**: No content
+
+**Not Found (404)**:
+```json
+{
+  "detail": "Task not found"
+}
+```
+
+## Common Error Responses
+**Server Error (500)**:
+```json
+{
+  "detail": "Internal server error"
+}
+```
