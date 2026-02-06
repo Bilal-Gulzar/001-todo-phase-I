@@ -1,0 +1,3 @@
+# Project dependencies for Todo CLI Application
+rich==13.7.1
+pytest==8.2.0
