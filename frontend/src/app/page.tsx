@@ -1,21 +1,45 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Task } from '../types/task';
 import TaskInput from '../components/TaskInput';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, token, logout, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !token) {
+      router.push('/login');
+    }
+  }, [authLoading, token, router]);
 
   // Fetch tasks from the backend
   const fetchTasks = async () => {
+    if (!token) return;
+
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api/v1';
       console.log('🔄 Starting fetch request to:', `${apiUrl}/tasks`);
-      const response = await fetch(`${apiUrl}/tasks`);
+      const response = await fetch(`${apiUrl}/tasks`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       console.log('✅ Fetch response received. Status:', response.status, 'OK:', response.ok);
+
+      if (response.status === 401) {
+        // Token expired or invalid, logout
+        logout();
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -35,8 +59,10 @@ export default function Dashboard() {
 
   // Fetch tasks on initial load
   useEffect(() => {
-    fetchTasks();
-  }, []);
+    if (token) {
+      fetchTasks();
+    }
+  }, [token]);
 
   // Handle task addition by refreshing the list
   const handleTaskAdded = () => {
@@ -45,20 +71,28 @@ export default function Dashboard() {
 
   // Toggle task completion status
   const toggleTaskStatus = async (task: Task) => {
+    if (!token) return;
+
     try {
       const updatedStatus = task.status === 'completed' ? 'pending' : 'completed';
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api/v1';
       console.log('🔄 Updating task status to:', updatedStatus, 'for task:', task.id);
       const response = await fetch(`${apiUrl}/tasks/${task.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           status: updatedStatus
         }),
       });
       console.log('✅ Update response received. Status:', response.status);
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -80,17 +114,27 @@ export default function Dashboard() {
 
   // Delete a task
   const deleteTask = async (taskId: number) => {
+    if (!token) return;
+
     if (!window.confirm('Are you sure you want to delete this task?')) {
-      return; // Cancel deletion if user doesn't confirm
+      return;
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api/v1';
       console.log('🔄 Deleting task:', taskId);
       const response = await fetch(`${apiUrl}/tasks/${taskId}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
       console.log('✅ Delete response received. Status:', response.status);
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -105,6 +149,18 @@ export default function Dashboard() {
       setError(errorMessage);
     }
   };
+
+  // Show loading while checking authentication
+  if (authLoading || !token) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+          <p className="text-lg text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -141,9 +197,17 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
-        <header className="mb-10">
-          <h1 className="text-3xl font-bold text-gray-900">Task Dashboard</h1>
-          <p className="text-gray-600 mt-2">Manage your tasks efficiently</p>
+        <header className="mb-10 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Task Dashboard</h1>
+            <p className="text-gray-600 mt-2">Welcome, {user?.full_name || user?.email}</p>
+          </div>
+          <button
+            onClick={logout}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          >
+            Logout
+          </button>
         </header>
 
         {/* Task Input Component */}

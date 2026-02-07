@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Task } from '../types/task';
+import { useAuth } from '../contexts/AuthContext';
 
 interface TaskInputProps {
   onTaskAdded: () => void;
@@ -11,12 +12,18 @@ export default function TaskInput({ onTaskAdded }: TaskInputProps) {
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { token, logout } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!title.trim()) {
       setError('Title is required');
+      return;
+    }
+
+    if (!token) {
+      setError('You must be logged in to create tasks');
       return;
     }
 
@@ -31,17 +38,23 @@ export default function TaskInput({ onTaskAdded }: TaskInputProps) {
         priority,
       };
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api/v1';
       console.log('🔄 Creating new task:', newTask);
       console.log('🔄 API URL:', `${apiUrl}/tasks`);
       const response = await fetch(`${apiUrl}/tasks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(newTask),
       });
       console.log('✅ Create response received. Status:', response.status);
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
