@@ -30,9 +30,15 @@ def create_new_task(task_data: TaskCreate, session: Session = Depends(get_db_ses
         TaskRead: The created task
     """
     try:
-        return create_task(session, task_data)
+        print(f"Creating new task with data: {task_data}")
+        result = create_task(session, task_data)
+        print(f"Successfully created task with ID: {result.id}")
+        return result
     except Exception as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        print(f'DB Error in create_new_task: {e}')
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=422, detail=f"Database error: {str(e)}")
 
 
 @router.get("/tasks", response_model=List[TaskRead])
@@ -55,9 +61,15 @@ def list_all_tasks(
         List[TaskRead]: List of tasks
     """
     try:
-        return get_all_tasks(session, skip=skip, limit=limit, completed=completed)
+        print(f"Fetching tasks with skip={skip}, limit={limit}, completed={completed}")
+        result = get_all_tasks(session, skip=skip, limit=limit, completed=completed)
+        print(f"Successfully fetched {len(result)} tasks")
+        return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f'DB Error in list_all_tasks: {e}')
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 @router.get("/tasks/{task_id}", response_model=TaskRead)
@@ -73,14 +85,19 @@ def get_single_task(task_id: str, session: Session = Depends(get_db_session)):
         TaskRead: The requested task
     """
     try:
+        print(f"Fetching task with ID: {task_id}")
         task = get_task_by_id(session, task_id)
         if not task:
             raise HTTPException(status_code=404, detail=f"Task with ID {task_id} not found")
+        print(f"Successfully fetched task with ID: {task.id}")
         return task
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f'DB Error in get_single_task: {e}')
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 @router.patch("/tasks/{task_id}", response_model=TaskRead)
@@ -101,14 +118,19 @@ def update_existing_task(
         TaskRead: The updated task
     """
     try:
+        print(f"Updating task with ID: {task_id}, data: {task_data}")
         task = update_task(session, task_id, task_data)
         if not task:
             raise HTTPException(status_code=404, detail=f"Task with ID {task_id} not found")
+        print(f"Successfully updated task with ID: {task.id}")
         return task
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f'DB Error in update_existing_task: {e}')
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 @router.delete("/tasks/{task_id}", status_code=204)
@@ -124,11 +146,16 @@ def remove_task(task_id: str, session: Session = Depends(get_db_session)):
         None: 204 No Content on successful deletion
     """
     try:
+        print(f"Deleting task with ID: {task_id}")
         success = delete_task(session, task_id)
         if not success:
             raise HTTPException(status_code=404, detail=f"Task with ID {task_id} not found")
+        print(f"Successfully deleted task with ID: {task_id}")
         return None  # 204 No Content
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f'DB Error in remove_task: {e}')
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")

@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from .database import create_db_and_tables
 from contextlib import asynccontextmanager
 from .api.tasks import router as tasks_router
@@ -25,6 +26,15 @@ app = FastAPI(
     title="Todo Backend API",
     version="0.1.0",
     lifespan=lifespan
+)
+
+# Add CORS middleware to allow requests from the Next.js frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],  # Allow Next.js dev server
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],  # Allow all headers
 )
 
 # Include the tasks router

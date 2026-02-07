@@ -4,7 +4,7 @@ Handles business logic for task management.
 """
 from typing import List, Optional
 from sqlmodel import Session, select
-from ..models.task import Task, TaskCreate, TaskUpdate, TaskRead
+from ..models.task import Task, TaskCreate, TaskUpdate, TaskRead, TaskStatus
 
 
 def create_task(session: Session, task_data: TaskCreate) -> TaskRead:
@@ -65,7 +65,10 @@ def get_all_tasks(
 
     # Apply filter if completed status is specified
     if completed is not None:
-        statement = statement.where(Task.is_completed == completed)
+        if completed:
+            statement = statement.where(Task.status == TaskStatus.completed)
+        else:
+            statement = statement.where(Task.status != TaskStatus.completed)
 
     # Apply pagination
     statement = statement.offset(skip).limit(limit)
@@ -96,6 +99,12 @@ def update_task(
 
     # Update only the fields that were provided in task_data
     update_data = task_data.model_dump(exclude_unset=True)
+
+    # Update the updated_at timestamp when the task is modified
+    if 'updated_at' not in update_data:
+        from datetime import datetime
+        update_data['updated_at'] = datetime.now()
+
     for field, value in update_data.items():
         setattr(task, field, value)
 

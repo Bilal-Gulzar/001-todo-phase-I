@@ -5,6 +5,19 @@ from sqlmodel import SQLModel, Field
 from datetime import datetime
 import uuid
 from typing import Optional
+from enum import Enum
+
+
+class TaskStatus(str, Enum):
+    pending = "pending"
+    in_progress = "in-progress"
+    completed = "completed"
+
+
+class TaskPriority(str, Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
 
 
 class TaskBase(SQLModel):
@@ -13,7 +26,8 @@ class TaskBase(SQLModel):
     """
     title: str = Field(min_length=1, max_length=100)
     description: Optional[str] = Field(default=None, max_length=500)
-    is_completed: bool = Field(default=False)
+    status: TaskStatus = Field(default=TaskStatus.pending)
+    priority: TaskPriority = Field(default=TaskPriority.medium)
 
 
 class Task(TaskBase, table=True):
@@ -24,11 +38,14 @@ class Task(TaskBase, table=True):
         id: Unique identifier for the task (UUID)
         title: Title of the task (required, 1-100 characters)
         description: Optional description of the task (max 500 characters)
-        is_completed: Status indicating if the task is completed (default: false)
+        status: Status of the task (pending, in-progress, completed)
+        priority: Priority of the task (low, medium, high)
         created_at: Timestamp when the task was created (auto-populated)
+        updated_at: Timestamp when the task was last updated (auto-populated)
     """
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
 
 
 class TaskCreate(TaskBase):
@@ -46,12 +63,14 @@ class TaskUpdate(SQLModel):
     """
     title: Optional[str] = Field(default=None, min_length=1, max_length=100)
     description: Optional[str] = Field(default=None, max_length=500)
-    is_completed: Optional[bool] = None
+    status: Optional[TaskStatus] = None
+    priority: Optional[TaskPriority] = None
 
 
 class TaskRead(TaskBase):
     """
-    Model for reading a task with its ID and creation timestamp.
+    Model for reading a task with its ID and timestamps.
     """
     id: str
     created_at: datetime
+    updated_at: datetime
