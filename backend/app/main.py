@@ -4,6 +4,7 @@ from .database import create_db_and_tables
 from contextlib import asynccontextmanager
 from .api.tasks import router as tasks_router
 from .api.auth import router as auth_router
+from .api.chat import router as chat_router
 
 
 @asynccontextmanager
@@ -41,6 +42,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(tasks_router, prefix="/api/v1", tags=["tasks"])
+app.include_router(chat_router, prefix="/api/v1", tags=["chat"])
 
 
 @app.get("/")

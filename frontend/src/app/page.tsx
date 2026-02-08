@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Task } from '../types/task';
 import TaskInput from '../components/TaskInput';
 import { useAuth } from '../contexts/AuthContext';
+import ChatSidebar from '../components/ChatSidebar';
 
 export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -21,7 +22,7 @@ export default function Dashboard() {
   }, [authLoading, token, router]);
 
   // Fetch tasks from the backend
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -55,14 +56,14 @@ export default function Dashboard() {
       console.log('🏁 Fetch complete, setting loading to false');
       setLoading(false);
     }
-  };
+  }, [token, logout]);
 
   // Fetch tasks on initial load
   useEffect(() => {
     if (token) {
       fetchTasks();
     }
-  }, [token]);
+  }, [token, fetchTasks]);
 
   // Handle task addition by refreshing the list
   const handleTaskAdded = () => {
@@ -295,6 +296,9 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* AI Chat Assistant */}
+      <ChatSidebar onTasksChange={fetchTasks} />
     </div>
   );
 }

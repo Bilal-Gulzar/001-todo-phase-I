@@ -1,11 +1,7 @@
-# Environment variables - NEVER commit these!
+# Environment variables
 .env
 .env.local
 .env.*.local
-*.env
-backend/.env
-backend/.env.backup
-frontend/.env.local
 
 # Python
 __pycache__/
@@ -28,21 +24,17 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
-.pytest_cache/
-.coverage
-htmlcov/
-*.log
 
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-.next/
-out/
-.turbo/
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
 # IDEs
 .vscode/
@@ -50,12 +42,29 @@ out/
 *.swp
 *.swo
 *~
-.DS_Store
 
-# Claude Code
-.claude/settings.local.json
+# Next.js
+.next/
+out/
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Temporary files
 *.tmp
-*.bak
-*.backup
+*.temp
