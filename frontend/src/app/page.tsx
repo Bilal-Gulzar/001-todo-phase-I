@@ -162,6 +162,12 @@ export default function Dashboard() {
       const data = await response.json();
       let cleanedResponse = data.response || '';
 
+      // Check if response contains rate limit error
+      const responseStr = cleanedResponse.toLowerCase();
+      if (responseStr.includes('429') || responseStr.includes('rate_limit') || responseStr.includes('rate limit')) {
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
+
       if (cleanedResponse) {
         cleanedResponse = cleanedResponse.replace(/<function[\s\S]*?<\/function>/g, '').trim();
       }
@@ -178,19 +184,16 @@ export default function Dashboard() {
       };
 
       setMessages(prev => [...prev, assistantMsg]);
-      await fetchTasks();
     } catch (error) {
       // User-friendly error handling
-      let errorMessage = 'Unknown error';
+      let errorMessage = '⚠️ Connection interrupted. Please check your network.';
 
       if (error instanceof Error) {
         const errorStr = error.message.toLowerCase();
 
         // Check for rate limit errors
         if (errorStr.includes('429') || errorStr.includes('rate_limit') || errorStr === 'rate_limit_exceeded') {
-          errorMessage = '⚠️ System is cooling down. Our AI Agent is taking a short breath. Please try again in a moment.';
-        } else {
-          errorMessage = `Error: ${error.message}`;
+          errorMessage = '⚠️ AI Limit Reached. Task might not have updated. Please wait 2 minutes.';
         }
       }
 
@@ -202,6 +205,8 @@ export default function Dashboard() {
       };
       setMessages(prev => [...prev, errorMsg]);
     } finally {
+      // Always refresh tasks, even on error
+      await fetchTasks();
       setIsProcessing(false);
       setAgentStatus('idle');
     }
