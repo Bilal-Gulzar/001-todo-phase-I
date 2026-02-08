@@ -231,7 +231,7 @@ export default function Dashboard() {
             <div className="w-8 h-8 bg-[#3b82f6] flex items-center justify-center font-bold text-sm">
               AI
             </div>
-            <span className="text-lg font-semibold">Agent Factory</span>
+            <span className="text-lg font-semibold">TODO</span>
           </div>
           <div className="flex items-center space-x-3">
             <span className="text-sm text-[#94a3b8]">{user?.email}</span>
@@ -259,20 +259,15 @@ export default function Dashboard() {
           <p className="text-[#94a3b8] text-lg mb-8 max-w-2xl">
             Manage your tasks with the power of AI. Natural language commands, intelligent prioritization, and seamless workflow automation.
           </p>
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setIsChatOpen(true)}
-              className="px-6 py-3 bg-[#3b82f6] text-white font-medium flex items-center space-x-2 hover:bg-[#2563eb] transition-all"
-            >
-              <span>Get Started</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-            <button className="px-6 py-3 border border-white/20 text-white font-medium hover:bg-white/5 transition-all">
-              Learn More
-            </button>
-          </div>
+          <button
+            onClick={() => setIsChatOpen(true)}
+            className="px-6 py-3 bg-[#3b82f6] text-white font-medium flex items-center space-x-2 hover:bg-[#2563eb] transition-all"
+          >
+            <span>Get Started</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
 
         {/* Task Grid */}
@@ -309,8 +304,8 @@ export default function Dashboard() {
                         onChange={() => toggleTaskStatus(task)}
                         className="mt-1 w-4 h-4 bg-black border border-[#3b82f6] checked:bg-[#3b82f6] cursor-pointer"
                       />
-                      <h3 className={`font-bold text-lg ${
-                        task.status === 'completed' ? 'line-through text-[#94a3b8]' : 'text-[#3b82f6]'
+                      <h3 className={`font-bold text-lg text-[#3b82f6] ${
+                        task.status === 'completed' ? 'line-through opacity-60' : ''
                       }`}>
                         {task.title}
                       </h3>
