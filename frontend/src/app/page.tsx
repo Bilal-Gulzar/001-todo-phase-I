@@ -35,16 +35,7 @@ export default function Dashboard() {
     }
   }, [authLoading, token, router]);
 
-  useEffect(() => {
-    if (token) {
-      setMessages([{
-        id: Date.now(),
-        role: 'system',
-        content: 'Agent Console initialized. Ready for commands.',
-        timestamp: new Date()
-      }]);
-    }
-  }, [token]);
+  // Initial messages removed - chat starts empty
 
   const fetchTasks = useCallback(async () => {
     if (!token) return;
@@ -291,7 +282,7 @@ export default function Dashboard() {
               {tasks.map((task) => (
                 <div
                   key={task.id}
-                  className={`bg-black border border-[#3b82f6] p-6 hover:border-[#3b82f6]/80 transition-all ${
+                  className={`bg-zinc-900/30 border border-[#3b82f6] p-6 hover:border-[#3b82f6]/80 transition-all ${
                     task.status === 'completed' ? 'opacity-60' : ''
                   }`}
                 >
@@ -388,7 +379,7 @@ export default function Dashboard() {
         {/* Sidebar Header */}
         <div className="border-b border-white/10 p-4 flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-white">Agent Console</h3>
+            <h3 className="font-semibold text-white">AI Assistant</h3>
             <p className="text-xs text-[#94a3b8] mt-1">
               Natural language task management
             </p>
@@ -401,22 +392,6 @@ export default function Dashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-        </div>
-
-        {/* Status Badge */}
-        <div className="px-4 py-2 border-b border-white/10">
-          <div className={`inline-flex items-center text-xs px-2 py-1 border ${
-            agentStatus === 'idle' ? 'border-green-500/30 text-green-400' :
-            agentStatus === 'thinking' ? 'border-yellow-500/30 text-yellow-400' :
-            'border-[#3b82f6]/30 text-[#3b82f6]'
-          }`}>
-            <span className={`w-2 h-2 rounded-full mr-2 ${
-              agentStatus === 'idle' ? 'bg-green-400' :
-              agentStatus === 'thinking' ? 'bg-yellow-400' :
-              'bg-[#3b82f6]'
-            }`} />
-            {agentStatus.toUpperCase()}
-          </div>
         </div>
 
         {/* Messages */}
