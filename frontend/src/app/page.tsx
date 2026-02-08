@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [agentStatus, setAgentStatus] = useState<'idle' | 'thinking' | 'executing'>('idle');
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const { user, token, logout, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const terminalEndRef = useRef<HTMLDivElement>(null);
@@ -222,21 +223,18 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white relative">
-      {/* Radial gradient background */}
-      <div className="absolute inset-0 bg-gradient-radial from-blue-500/10 via-black to-black pointer-events-none" />
-
+    <div className="min-h-screen bg-black text-white">
       {/* Navigation Bar */}
-      <nav className="relative border-b border-white/10 bg-black/50 backdrop-blur-sm">
+      <nav className="border-b border-white/10 bg-black">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-blue-500 flex items-center justify-center font-bold text-sm">
+            <div className="w-8 h-8 bg-[#3b82f6] flex items-center justify-center font-bold text-sm">
               AI
             </div>
             <span className="text-lg font-semibold">Agent Factory</span>
           </div>
           <div className="flex items-center space-x-3">
-            <span className="text-sm text-slate-400">{user?.email}</span>
+            <span className="text-sm text-[#94a3b8]">{user?.email}</span>
             <button
               onClick={logout}
               className="px-4 py-2 border border-white/20 text-white text-sm hover:bg-white/5 transition-all"
@@ -247,201 +245,249 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className="relative flex">
-        {/* Main Content */}
-        <div className="flex-1 px-6 py-12">
-          <div className="max-w-4xl mx-auto">
-            {/* Hero Section */}
-            <div className="mb-12">
-              <div className="text-xs font-mono text-slate-400 mb-4 tracking-wider">
-                AI-FIRST FUTURE
-              </div>
-              <h1 className="text-5xl font-bold mb-4 leading-tight">
-                <span className="text-white">AI POWERED</span>{' '}
-                <span className="text-blue-400">TODO</span>
-              </h1>
-              <p className="text-slate-400 text-lg mb-8 max-w-2xl">
-                Manage your tasks with the power of AI. Natural language commands, intelligent prioritization, and seamless workflow automation.
-              </p>
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => document.getElementById('agent-input')?.focus()}
-                  className="px-6 py-3 bg-blue-500 text-white font-medium flex items-center space-x-2 hover:bg-blue-600 transition-all"
-                >
-                  <span>Get Started</span>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-                <button className="px-6 py-3 border border-white/20 text-white font-medium hover:bg-white/5 transition-all">
-                  Learn More
-                </button>
-              </div>
-            </div>
-
-            {/* Task Feed */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Your Tasks</h2>
-                <div className="text-sm text-slate-400">
-                  {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
-                </div>
-              </div>
-
-              {tasks.length === 0 ? (
-                <div className="border border-white/10 p-12 text-center">
-                  <div className="text-slate-400 mb-2">No tasks yet</div>
-                  <div className="text-slate-500 text-sm">
-                    Use the Agent Console to create your first task
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {tasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className={`border border-white/10 p-4 hover:border-blue-500/50 transition-all ${
-                        task.status === 'completed' ? 'opacity-60' : ''
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start space-x-3 flex-1">
-                          <input
-                            type="checkbox"
-                            checked={task.status === 'completed'}
-                            onChange={() => toggleTaskStatus(task)}
-                            className="mt-1 w-4 h-4 bg-black border border-white/30 checked:bg-blue-500 cursor-pointer"
-                          />
-                          <div className="flex-1">
-                            <h3 className={`font-medium mb-1 ${
-                              task.status === 'completed' ? 'line-through text-slate-500' : 'text-white'
-                            }`}>
-                              {task.title}
-                            </h3>
-                            {task.description && (
-                              <p className={`text-sm ${
-                                task.status === 'completed' ? 'line-through text-slate-600' : 'text-slate-400'
-                              }`}>
-                                {task.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-3 ml-4">
-                          <span className={`text-xs px-2 py-1 border ${
-                            task.priority === 'high' ? 'border-red-500/40 text-red-400' :
-                            task.priority === 'medium' ? 'border-yellow-500/40 text-yellow-400' :
-                            'border-green-500/40 text-green-400'
-                          }`}>
-                            {task.priority.toUpperCase()}
-                          </span>
-                          <button
-                            onClick={() => deleteTask(task.id)}
-                            className="text-slate-400 hover:text-red-400 transition-colors"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
-                        <span className={`text-xs px-2 py-1 border ${
-                          task.status === 'completed' ? 'border-green-500/30 text-green-400' :
-                          task.status === 'in-progress' ? 'border-blue-500/30 text-blue-400' :
-                          'border-slate-500/30 text-slate-400'
-                        }`}>
-                          {task.status.toUpperCase().replace('-', ' ')}
-                        </span>
-                        <span className="text-xs text-slate-500">
-                          {new Date(task.updated_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 py-12">
+        {/* Hero Section */}
+        <div className="mb-12">
+          <div className="text-xs font-mono text-[#94a3b8] mb-4 tracking-wider uppercase">
+            AI-First Future
+          </div>
+          <h1 className="text-5xl font-bold mb-4 leading-tight">
+            <span className="text-white">AI POWERED</span>{' '}
+            <span className="text-[#3b82f6]">TODO</span>
+          </h1>
+          <p className="text-[#94a3b8] text-lg mb-8 max-w-2xl">
+            Manage your tasks with the power of AI. Natural language commands, intelligent prioritization, and seamless workflow automation.
+          </p>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setIsChatOpen(true)}
+              className="px-6 py-3 bg-[#3b82f6] text-white font-medium flex items-center space-x-2 hover:bg-[#2563eb] transition-all"
+            >
+              <span>Get Started</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <button className="px-6 py-3 border border-white/20 text-white font-medium hover:bg-white/5 transition-all">
+              Learn More
+            </button>
           </div>
         </div>
 
-        {/* Agent Console - Floating Right Sidebar */}
-        <div className="w-96 border-l border-white/10 bg-zinc-900/50 backdrop-blur-md flex flex-col sticky top-0 h-screen">
-          {/* Console Header */}
-          <div className="border-b border-white/10 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold">Agent Console</h3>
-              <div className={`text-xs px-2 py-1 border ${
-                agentStatus === 'idle' ? 'border-green-500/30 text-green-400' :
-                agentStatus === 'thinking' ? 'border-yellow-500/30 text-yellow-400' :
-                'border-blue-500/30 text-blue-400'
-              }`}>
-                {agentStatus.toUpperCase()}
+        {/* Task Grid */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-white">Your Tasks</h2>
+            <div className="text-sm text-[#94a3b8]">
+              {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+            </div>
+          </div>
+
+          {tasks.length === 0 ? (
+            <div className="border border-[#3b82f6] bg-black p-12 text-center">
+              <div className="text-[#94a3b8] mb-2">No tasks yet</div>
+              <div className="text-[#94a3b8]/60 text-sm">
+                Use the AI Agent to create your first task
               </div>
             </div>
-            <p className="text-xs text-slate-400">
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  className={`bg-black border border-[#3b82f6] p-6 hover:border-[#3b82f6]/80 transition-all ${
+                    task.status === 'completed' ? 'opacity-60' : ''
+                  }`}
+                >
+                  {/* Card Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start space-x-3 flex-1">
+                      <input
+                        type="checkbox"
+                        checked={task.status === 'completed'}
+                        onChange={() => toggleTaskStatus(task)}
+                        className="mt-1 w-4 h-4 bg-black border border-[#3b82f6] checked:bg-[#3b82f6] cursor-pointer"
+                      />
+                      <h3 className={`font-bold text-lg ${
+                        task.status === 'completed' ? 'line-through text-[#94a3b8]' : 'text-[#3b82f6]'
+                      }`}>
+                        {task.title}
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      className="text-[#94a3b8] hover:text-red-400 transition-colors ml-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Card Description */}
+                  {task.description && (
+                    <div className="mb-4">
+                      <p className={`text-sm leading-relaxed ${
+                        task.status === 'completed' ? 'line-through text-[#94a3b8]/60' : 'text-[#94a3b8]'
+                      }`}>
+                        {task.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Card Footer */}
+                  <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                    <div className="flex items-center space-x-2">
+                      <span className={`text-xs px-2 py-1 border ${
+                        task.priority === 'high' ? 'border-red-500/40 text-red-400' :
+                        task.priority === 'medium' ? 'border-yellow-500/40 text-yellow-400' :
+                        'border-green-500/40 text-green-400'
+                      }`}>
+                        {task.priority.toUpperCase()}
+                      </span>
+                      <span className={`text-xs px-2 py-1 border ${
+                        task.status === 'completed' ? 'border-green-500/30 text-green-400' :
+                        task.status === 'in-progress' ? 'border-[#3b82f6]/30 text-[#3b82f6]' :
+                        'border-[#94a3b8]/30 text-[#94a3b8]'
+                      }`}>
+                        {task.status.toUpperCase().replace('-', ' ')}
+                      </span>
+                    </div>
+                    <span className="text-xs text-[#94a3b8]/60">
+                      {new Date(task.updated_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Floating Action Button (FAB) */}
+      <button
+        onClick={() => setIsChatOpen(true)}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-[#3b82f6] text-white rounded-full shadow-lg hover:bg-[#2563eb] transition-all flex items-center justify-center z-40"
+        aria-label="Open chat"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        </svg>
+      </button>
+
+      {/* Chat Sidebar Overlay */}
+      {isChatOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={() => setIsChatOpen(false)}
+        />
+      )}
+
+      {/* Chat Sidebar Drawer */}
+      <div
+        className={`fixed top-0 right-0 h-full w-[350px] bg-zinc-950 backdrop-blur-md border-l border-white/10 z-50 transform transition-transform duration-300 ease-in-out ${
+          isChatOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {/* Sidebar Header */}
+        <div className="border-b border-white/10 p-4 flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-white">Agent Console</h3>
+            <p className="text-xs text-[#94a3b8] mt-1">
               Natural language task management
             </p>
           </div>
+          <button
+            onClick={() => setIsChatOpen(false)}
+            className="text-[#94a3b8] hover:text-white transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`text-sm ${
-                msg.role === 'user' ? 'text-blue-400' :
-                msg.role === 'system' ? 'text-slate-500' :
-                'text-slate-300'
-              }`}>
-                <div className="font-mono text-xs text-slate-500 mb-1">
-                  {msg.role === 'user' ? 'You' : msg.role === 'assistant' ? 'Agent' : 'System'}
-                </div>
-                <div className="whitespace-pre-wrap break-words">
-                  {msg.content}
-                </div>
-              </div>
-            ))}
-
-            {isProcessing && (
-              <div className="text-sm text-slate-400 animate-pulse">
-                Processing...
-              </div>
-            )}
-
-            <div ref={terminalEndRef} />
+        {/* Status Badge */}
+        <div className="px-4 py-2 border-b border-white/10">
+          <div className={`inline-flex items-center text-xs px-2 py-1 border ${
+            agentStatus === 'idle' ? 'border-green-500/30 text-green-400' :
+            agentStatus === 'thinking' ? 'border-yellow-500/30 text-yellow-400' :
+            'border-[#3b82f6]/30 text-[#3b82f6]'
+          }`}>
+            <span className={`w-2 h-2 rounded-full mr-2 ${
+              agentStatus === 'idle' ? 'bg-green-400' :
+              agentStatus === 'thinking' ? 'bg-yellow-400' :
+              'bg-[#3b82f6]'
+            }`} />
+            {agentStatus.toUpperCase()}
           </div>
+        </div>
 
-          {/* Input */}
-          <div className="border-t border-white/10 p-4">
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <input
-                id="agent-input"
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Type a command..."
-                className="w-full bg-black/50 border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
-                disabled={isProcessing}
-              />
-              <button
-                type="submit"
-                disabled={isProcessing || !inputValue.trim()}
-                className="w-full px-4 py-3 bg-blue-500 text-white font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2"
-              >
-                <span>Send Command</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-              </button>
-            </form>
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 h-[calc(100vh-280px)]">
+          {messages.map((msg) => (
+            <div key={msg.id} className="text-sm">
+              <div className="font-mono text-xs text-[#94a3b8] mb-1">
+                {msg.role === 'user' ? 'You' : msg.role === 'assistant' ? 'Agent' : 'System'}
+              </div>
+              <div className={`whitespace-pre-wrap break-words ${
+                msg.role === 'user' ? 'text-[#3b82f6]' :
+                msg.role === 'system' ? 'text-[#94a3b8]/60' :
+                'text-white'
+              }`}>
+                {msg.content}
+              </div>
+            </div>
+          ))}
 
-            <div className="mt-4 text-xs text-slate-500">
-              <div className="mb-2">Try commands like:</div>
-              <div className="space-y-1 font-mono">
-                <div>• list all tasks</div>
-                <div>• add meeting at 3pm</div>
-                <div>• mark task completed</div>
+          {isProcessing && (
+            <div className="text-sm text-[#94a3b8] animate-pulse">
+              Processing...
+            </div>
+          )}
+
+          <div ref={terminalEndRef} />
+        </div>
+
+        {/* Input */}
+        <div className="border-t border-white/10 p-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input
+              id="agent-input"
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Type a command..."
+              className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white placeholder-[#94a3b8]/50 focus:outline-none focus:border-[#3b82f6] transition-colors"
+              disabled={isProcessing}
+            />
+            <button
+              type="submit"
+              disabled={isProcessing || !inputValue.trim()}
+              className="w-full px-4 py-3 bg-[#3b82f6] text-white font-medium hover:bg-[#2563eb] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2"
+            >
+              <span>Send Command</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+          </form>
+
+          <div className="mt-4 text-xs text-[#94a3b8]/60">
+            <div className="mb-2">Try commands like:</div>
+            <div className="space-y-1 font-mono">
+              <div className="flex items-center">
+                <span className="w-1 h-1 rounded-full bg-[#3b82f6] mr-2" />
+                list all tasks
+              </div>
+              <div className="flex items-center">
+                <span className="w-1 h-1 rounded-full bg-[#3b82f6] mr-2" />
+                add meeting at 3pm
+              </div>
+              <div className="flex items-center">
+                <span className="w-1 h-1 rounded-full bg-[#3b82f6] mr-2" />
+                mark task completed
               </div>
             </div>
           </div>
