@@ -152,6 +152,11 @@ export default function Dashboard() {
         })
       });
 
+      // Check for rate limit error
+      if (response.status === 429) {
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
+
       if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
       const data = await response.json();
@@ -175,10 +180,24 @@ export default function Dashboard() {
       setMessages(prev => [...prev, assistantMsg]);
       await fetchTasks();
     } catch (error) {
+      // User-friendly error handling
+      let errorMessage = 'Unknown error';
+
+      if (error instanceof Error) {
+        const errorStr = error.message.toLowerCase();
+
+        // Check for rate limit errors
+        if (errorStr.includes('429') || errorStr.includes('rate_limit') || errorStr === 'rate_limit_exceeded') {
+          errorMessage = '⚠️ System is cooling down. Our AI Agent is taking a short breath. Please try again in a moment.';
+        } else {
+          errorMessage = `Error: ${error.message}`;
+        }
+      }
+
       const errorMsg: Message = {
         id: Date.now() + 1,
         role: 'system',
-        content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        content: errorMessage,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMsg]);
