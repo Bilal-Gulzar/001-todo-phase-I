@@ -21,6 +21,13 @@ export default function Dashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [agentStatus, setAgentStatus] = useState<'idle' | 'thinking' | 'executing'>('idle');
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Manual task input form state
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
+  const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [isCreating, setIsCreating] = useState(false);
+
   const { user, token, logout, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const terminalEndRef = useRef<HTMLDivElement>(null);
@@ -34,8 +41,6 @@ export default function Dashboard() {
       router.push('/login');
     }
   }, [authLoading, token, router]);
-
-  // Initial messages removed - chat starts empty
 
   const fetchTasks = useCallback(async () => {
     if (!token) return;
@@ -53,7 +58,13 @@ export default function Dashboard() {
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
-      setTasks(data);
+
+      // Sort tasks by updated_at descending (newest first)
+      const sortedTasks = data.sort((a: Task, b: Task) =>
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+
+      setTasks(sortedTasks);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tasks');
     } finally {
@@ -64,6 +75,48 @@ export default function Dashboard() {
   useEffect(() => {
     if (token) fetchTasks();
   }, [token, fetchTasks]);
+
+  const createTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !taskTitle.trim()) return;
+
+    setIsCreating(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api/v1';
+      const response = await fetch(`${apiUrl}/tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: taskTitle,
+          description: taskDescription,
+          priority: taskPriority,
+          status: 'pending'
+        }),
+      });
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      // Clear form
+      setTaskTitle('');
+      setTaskDescription('');
+      setTaskPriority('medium');
+
+      // Refresh tasks
+      await fetchTasks();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create task');
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   const sendCommand = async (command: string) => {
     if (!command.trim() || isProcessing) return;
@@ -79,14 +132,6 @@ export default function Dashboard() {
     setInputValue('');
     setIsProcessing(true);
     setAgentStatus('thinking');
-
-    const thinkingMsg: Message = {
-      id: Date.now() + 1,
-      role: 'system',
-      content: 'Processing...',
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, thinkingMsg]);
 
     try {
       setAgentStatus('executing');
@@ -121,22 +166,22 @@ export default function Dashboard() {
       }
 
       const assistantMsg: Message = {
-        id: Date.now() + 2,
+        id: Date.now() + 1,
         role: 'assistant',
         content: cleanedResponse,
         timestamp: new Date()
       };
 
-      setMessages(prev => [...prev.filter(m => m.content !== thinkingMsg.content), assistantMsg]);
+      setMessages(prev => [...prev, assistantMsg]);
       await fetchTasks();
     } catch (error) {
       const errorMsg: Message = {
-        id: Date.now() + 2,
+        id: Date.now() + 1,
         role: 'system',
         content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
         timestamp: new Date()
       };
-      setMessages(prev => [...prev.filter(m => m.content !== thinkingMsg.content), errorMsg]);
+      setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsProcessing(false);
       setAgentStatus('idle');
@@ -261,6 +306,71 @@ export default function Dashboard() {
           </button>
         </div>
 
+        {/* Manual Task Input Form */}
+        <div className="mb-12 border border-[#3b82f6] bg-black p-6">
+          <h2 className="text-xl font-bold text-white mb-6">Create New Task</h2>
+          <form onSubmit={createTask} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Title Input */}
+              <div className="space-y-2">
+                <label htmlFor="task-title" className="block text-sm font-medium text-white">
+                  Title *
+                </label>
+                <input
+                  id="task-title"
+                  type="text"
+                  value={taskTitle}
+                  onChange={(e) => setTaskTitle(e.target.value)}
+                  placeholder="Enter task title..."
+                  required
+                  className="w-full bg-black border border-[#3b82f6] text-white px-4 py-3 focus:outline-none focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] transition-all placeholder-[#94a3b8]/50"
+                />
+              </div>
+
+              {/* Priority Dropdown */}
+              <div className="space-y-2">
+                <label htmlFor="task-priority" className="block text-sm font-medium text-white">
+                  Priority
+                </label>
+                <select
+                  id="task-priority"
+                  value={taskPriority}
+                  onChange={(e) => setTaskPriority(e.target.value as 'low' | 'medium' | 'high')}
+                  className="w-full bg-black border border-[#3b82f6] text-white px-4 py-3 focus:outline-none focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] transition-all"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Description Textarea */}
+            <div className="space-y-2">
+              <label htmlFor="task-description" className="block text-sm font-medium text-white">
+                Description
+              </label>
+              <textarea
+                id="task-description"
+                value={taskDescription}
+                onChange={(e) => setTaskDescription(e.target.value)}
+                placeholder="Enter task description..."
+                rows={3}
+                className="w-full bg-black border border-[#3b82f6] text-white px-4 py-3 focus:outline-none focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] transition-all placeholder-[#94a3b8]/50 resize-none"
+              />
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isCreating || !taskTitle.trim()}
+              className="px-6 py-3 bg-[#3b82f6] text-white font-medium hover:bg-[#2563eb] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {isCreating ? 'Creating...' : 'Create Task'}
+            </button>
+          </form>
+        </div>
+
         {/* Task Grid */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -274,7 +384,7 @@ export default function Dashboard() {
             <div className="border border-[#3b82f6] bg-black p-12 text-center">
               <div className="text-[#94a3b8] mb-2">No tasks yet</div>
               <div className="text-[#94a3b8]/60 text-sm">
-                Use the AI Agent to create your first task
+                Create your first task using the form above or AI Assistant
               </div>
             </div>
           ) : (
@@ -282,7 +392,7 @@ export default function Dashboard() {
               {tasks.map((task) => (
                 <div
                   key={task.id}
-                  className={`bg-zinc-900/30 border border-[#3b82f6] p-6 hover:border-[#3b82f6]/80 transition-all ${
+                  className={`bg-black border border-[#3b82f6] p-6 hover:border-[#3b82f6]/80 transition-all ${
                     task.status === 'completed' ? 'opacity-60' : ''
                   }`}
                 >
@@ -295,7 +405,7 @@ export default function Dashboard() {
                         onChange={() => toggleTaskStatus(task)}
                         className="mt-1 w-4 h-4 bg-black border border-[#3b82f6] checked:bg-[#3b82f6] cursor-pointer"
                       />
-                      <h3 className={`font-bold text-lg text-[#3b82f6] ${
+                      <h3 className={`font-bold text-lg text-white ${
                         task.status === 'completed' ? 'line-through opacity-60' : ''
                       }`}>
                         {task.title}
@@ -395,15 +505,21 @@ export default function Dashboard() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 h-[calc(100vh-280px)]">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 h-[calc(100vh-200px)]">
+          {messages.length === 0 && (
+            <div className="text-center text-[#94a3b8]/60 text-sm mt-8">
+              Start a conversation with the AI Assistant
+            </div>
+          )}
+
           {messages.map((msg) => (
             <div key={msg.id} className="text-sm">
               <div className="font-mono text-xs text-[#94a3b8] mb-1">
-                {msg.role === 'user' ? 'You' : msg.role === 'assistant' ? 'Agent' : 'System'}
+                {msg.role === 'user' ? 'You' : 'AI Assistant'}
               </div>
               <div className={`whitespace-pre-wrap break-words ${
                 msg.role === 'user' ? 'text-[#3b82f6]' :
-                msg.role === 'system' ? 'text-[#94a3b8]/60' :
+                msg.role === 'system' ? 'text-red-400' :
                 'text-white'
               }`}>
                 {msg.content}
