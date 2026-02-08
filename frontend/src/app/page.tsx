@@ -270,7 +270,7 @@ export default function Dashboard() {
             <span className="text-lg font-semibold">TODO</span>
           </div>
           <div className="flex items-center space-x-3">
-            <span className="text-sm text-[#94a3b8]">{user?.email}</span>
+            <span className="text-sm text-slate-400">{user?.email}</span>
             <button
               onClick={logout}
               className="px-4 py-2 border border-white/20 text-white text-sm hover:bg-white/5 transition-all"
@@ -285,14 +285,14 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Hero Section */}
         <div className="mb-12">
-          <div className="text-xs font-mono text-[#94a3b8] mb-4 tracking-wider uppercase">
+          <div className="text-xs font-mono text-slate-400 mb-4 tracking-wider uppercase">
             AI-First Future
           </div>
           <h1 className="text-5xl font-bold mb-4 leading-tight">
             <span className="text-white">AI POWERED</span>{' '}
             <span className="text-[#3b82f6]">TODO</span>
           </h1>
-          <p className="text-[#94a3b8] text-lg mb-8 max-w-2xl">
+          <p className="text-slate-400 text-lg mb-8 max-w-2xl">
             Manage your tasks with the power of AI. Natural language commands, intelligent prioritization, and seamless workflow automation.
           </p>
           <button
@@ -307,7 +307,7 @@ export default function Dashboard() {
         </div>
 
         {/* Manual Task Input Form */}
-        <div className="mb-12 border border-[#3b82f6] bg-black p-6">
+        <div className="mb-12 border border-white/10 bg-transparent p-6">
           <h2 className="text-xl font-bold text-white mb-6">Create New Task</h2>
           <form onSubmit={createTask} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -323,7 +323,7 @@ export default function Dashboard() {
                   onChange={(e) => setTaskTitle(e.target.value)}
                   placeholder="Enter task title..."
                   required
-                  className="w-full bg-black border border-[#3b82f6] text-white px-4 py-3 focus:outline-none focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] transition-all placeholder-[#94a3b8]/50"
+                  className="w-full bg-transparent border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-blue-500 transition-all placeholder-slate-500"
                 />
               </div>
 
@@ -336,11 +336,11 @@ export default function Dashboard() {
                   id="task-priority"
                   value={taskPriority}
                   onChange={(e) => setTaskPriority(e.target.value as 'low' | 'medium' | 'high')}
-                  className="w-full bg-black border border-[#3b82f6] text-white px-4 py-3 focus:outline-none focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] transition-all"
+                  className="w-full bg-transparent border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-blue-500 transition-all"
                 >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
+                  <option value="low" className="bg-black">Low</option>
+                  <option value="medium" className="bg-black">Medium</option>
+                  <option value="high" className="bg-black">High</option>
                 </select>
               </div>
             </div>
@@ -356,7 +356,7 @@ export default function Dashboard() {
                 onChange={(e) => setTaskDescription(e.target.value)}
                 placeholder="Enter task description..."
                 rows={3}
-                className="w-full bg-black border border-[#3b82f6] text-white px-4 py-3 focus:outline-none focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] transition-all placeholder-[#94a3b8]/50 resize-none"
+                className="w-full bg-transparent border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-blue-500 transition-all placeholder-slate-500 resize-none"
               />
             </div>
 
@@ -375,15 +375,15 @@ export default function Dashboard() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">Your Tasks</h2>
-            <div className="text-sm text-[#94a3b8]">
+            <div className="text-sm text-slate-400">
               {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
             </div>
           </div>
 
           {tasks.length === 0 ? (
-            <div className="border border-[#3b82f6] bg-black p-12 text-center">
-              <div className="text-[#94a3b8] mb-2">No tasks yet</div>
-              <div className="text-[#94a3b8]/60 text-sm">
+            <div className="border border-blue-500/30 bg-zinc-950 p-12 text-center">
+              <div className="text-slate-400 mb-2">No tasks yet</div>
+              <div className="text-slate-500 text-sm">
                 Create your first task using the form above or AI Assistant
               </div>
             </div>
@@ -392,7 +392,7 @@ export default function Dashboard() {
               {tasks.map((task) => (
                 <div
                   key={task.id}
-                  className={`bg-black border border-[#3b82f6] p-6 hover:border-[#3b82f6]/80 transition-all ${
+                  className={`bg-zinc-950 border border-blue-500/30 hover:border-blue-500 p-6 transition-all ${
                     task.status === 'completed' ? 'opacity-60' : ''
                   }`}
                 >
@@ -403,7 +403,7 @@ export default function Dashboard() {
                         type="checkbox"
                         checked={task.status === 'completed'}
                         onChange={() => toggleTaskStatus(task)}
-                        className="mt-1 w-4 h-4 bg-black border border-[#3b82f6] checked:bg-[#3b82f6] cursor-pointer"
+                        className="mt-1 w-4 h-4 bg-black border border-blue-500/30 checked:bg-[#3b82f6] cursor-pointer"
                       />
                       <h3 className={`font-bold text-lg text-white ${
                         task.status === 'completed' ? 'line-through opacity-60' : ''
@@ -413,7 +413,7 @@ export default function Dashboard() {
                     </div>
                     <button
                       onClick={() => deleteTask(task.id)}
-                      className="text-[#94a3b8] hover:text-red-400 transition-colors ml-2"
+                      className="text-slate-400 hover:text-red-400 transition-colors ml-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -425,7 +425,7 @@ export default function Dashboard() {
                   {task.description && (
                     <div className="mb-4">
                       <p className={`text-sm leading-relaxed ${
-                        task.status === 'completed' ? 'line-through text-[#94a3b8]/60' : 'text-[#94a3b8]'
+                        task.status === 'completed' ? 'line-through text-slate-500' : 'text-slate-400'
                       }`}>
                         {task.description}
                       </p>
@@ -444,13 +444,13 @@ export default function Dashboard() {
                       </span>
                       <span className={`text-xs px-2 py-1 border ${
                         task.status === 'completed' ? 'border-green-500/30 text-green-400' :
-                        task.status === 'in-progress' ? 'border-[#3b82f6]/30 text-[#3b82f6]' :
-                        'border-[#94a3b8]/30 text-[#94a3b8]'
+                        task.status === 'in-progress' ? 'border-blue-500/30 text-blue-400' :
+                        'border-slate-500/30 text-slate-400'
                       }`}>
                         {task.status.toUpperCase().replace('-', ' ')}
                       </span>
                     </div>
-                    <span className="text-xs text-[#94a3b8]/60">
+                    <span className="text-xs text-slate-500">
                       {new Date(task.updated_at).toLocaleDateString()}
                     </span>
                   </div>
@@ -490,13 +490,13 @@ export default function Dashboard() {
         <div className="border-b border-white/10 p-4 flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-white">AI Assistant</h3>
-            <p className="text-xs text-[#94a3b8] mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               Natural language task management
             </p>
           </div>
           <button
             onClick={() => setIsChatOpen(false)}
-            className="text-[#94a3b8] hover:text-white transition-colors"
+            className="text-slate-400 hover:text-white transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -507,14 +507,14 @@ export default function Dashboard() {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 h-[calc(100vh-200px)]">
           {messages.length === 0 && (
-            <div className="text-center text-[#94a3b8]/60 text-sm mt-8">
+            <div className="text-center text-slate-500 text-sm mt-8">
               Start a conversation with the AI Assistant
             </div>
           )}
 
           {messages.map((msg) => (
             <div key={msg.id} className="text-sm">
-              <div className="font-mono text-xs text-[#94a3b8] mb-1">
+              <div className="font-mono text-xs text-slate-500 mb-1">
                 {msg.role === 'user' ? 'You' : 'AI Assistant'}
               </div>
               <div className={`whitespace-pre-wrap break-words ${
@@ -528,7 +528,7 @@ export default function Dashboard() {
           ))}
 
           {isProcessing && (
-            <div className="text-sm text-[#94a3b8] animate-pulse">
+            <div className="text-sm text-slate-400 animate-pulse">
               Processing...
             </div>
           )}
@@ -545,7 +545,7 @@ export default function Dashboard() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Type a command..."
-              className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white placeholder-[#94a3b8]/50 focus:outline-none focus:border-[#3b82f6] transition-colors"
+              className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
               disabled={isProcessing}
             />
             <button
@@ -560,7 +560,7 @@ export default function Dashboard() {
             </button>
           </form>
 
-          <div className="mt-4 text-xs text-[#94a3b8]/60">
+          <div className="mt-4 text-xs text-slate-500">
             <div className="mb-2">Try commands like:</div>
             <div className="space-y-1 font-mono">
               <div className="flex items-center">
