@@ -114,7 +114,7 @@ export default function Dashboard() {
   };
 
   // Delete a task
-  const deleteTask = async (taskId: number) => {
+  const deleteTask = async (taskId: string) => {
     if (!token) return;
 
     if (!window.confirm('Are you sure you want to delete this task?')) {
