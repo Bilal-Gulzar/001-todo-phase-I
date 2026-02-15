@@ -1,6 +1,6 @@
 """
 Task Agent - Clean Version Without Tracing
-Uses OpenAI Agents SDK with OpenRouter GPT-4o-mini, flat tool names, and error handling.
+Uses OpenAI Agents SDK with OpenRouter (GPT-4o-mini), flat tool names, and error handling.
 """
 from agents import Agent, Runner, function_tool, RunConfig, OpenAIProvider
 from openai import AsyncOpenAI

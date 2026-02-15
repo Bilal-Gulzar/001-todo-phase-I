@@ -1,6 +1,6 @@
 """
 Task Agent - Simple Implementation
-Uses OpenAI chat completions API directly with OpenRouter GPT-4o-mini (no Agents SDK)
+Uses OpenAI chat completions API with OpenRouter (GPT-4o-mini via OpenRouter)
 """
 from openai import AsyncOpenAI
 from sqlmodel import Session
@@ -132,7 +132,7 @@ FORMATTING: Display tasks as:
 
 Always show tool results to the user. Be friendly and conversational."""
 
-        # Call the API with GPT-4o-mini
+        # Call the API with GPT-4o-mini via OpenRouter
         response = await client.chat.completions.create(
             model="openai/gpt-4o-mini",
             messages=[
@@ -140,7 +140,11 @@ Always show tool results to the user. Be friendly and conversational."""
                 {"role": "user", "content": user_message}
             ],
             tools=tools,
-            tool_choice="auto"
+            tool_choice="auto",
+            extra_headers={
+                "HTTP-Referer": "http://localhost:8001",
+                "X-Title": "Todo App AI Agent"
+            }
         )
 
         message = response.choices[0].message
@@ -164,7 +168,7 @@ Always show tool results to the user. Be friendly and conversational."""
                 "content": result
             })
 
-        # Get final response with tool results using GPT-4o-mini
+        # Get final response with tool results
         final_response = await client.chat.completions.create(
             model="openai/gpt-4o-mini",
             messages=[
@@ -172,7 +176,11 @@ Always show tool results to the user. Be friendly and conversational."""
                 {"role": "user", "content": user_message},
                 message,
                 *tool_results
-            ]
+            ],
+            extra_headers={
+                "HTTP-Referer": "http://localhost:8001",
+                "X-Title": "Todo App AI Agent"
+            }
         )
 
         return final_response.choices[0].message.content or "Done!"
@@ -180,6 +188,8 @@ Always show tool results to the user. Be friendly and conversational."""
     except Exception as e:
         error_msg = str(e)
         print(f"Agent error: {error_msg}")
+        import traceback
+        traceback.print_exc()
 
         # Return friendly error message
         if "429" in error_msg or "quota" in error_msg.lower():

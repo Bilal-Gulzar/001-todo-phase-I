@@ -1,5 +1,5 @@
 """
-Chat API endpoints for AI agent interactions using OpenAI GPT-4o-mini.
+Chat API endpoints for AI agent interactions using OpenRouter (GPT-4o-mini).
 """
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -96,5 +96,6 @@ async def chat_health():
     return {
         "status": "healthy" if has_api_key else "misconfigured",
         "openai_configured": has_api_key,
-        "model": "openai/gpt-4o-mini"
+        "model": "openai/gpt-4o-mini",
+        "provider": "OpenRouter"
     }
