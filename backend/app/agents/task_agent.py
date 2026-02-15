@@ -1,12 +1,12 @@
 """
-Task Agent using Groq (Llama 3.3) via OpenAI-compatible bridge.
-Follows the Panaversity OpenAI Agents SDK pattern.
+Task Agent - Clean Version Without Tracing
+Uses OpenAI Agents SDK with OpenRouter GPT-4o-mini, flat tool names, and error handling.
 """
-from agents import Agent, Runner, AsyncOpenAI, set_default_openai_client, set_tracing_disabled, set_default_openai_api, function_tool
+from agents import Agent, Runner, function_tool, RunConfig, OpenAIProvider
+from openai import AsyncOpenAI
 from sqlmodel import Session
-from typing import Optional
 from ..database import engine
-from ..services.task_service import create_task, get_all_tasks, update_task
+from ..services.task_service import create_task as create_task_service, get_all_tasks, update_task as update_task_service, delete_task as delete_task_service
 from ..models.task import TaskCreate, TaskUpdate
 from ..config import settings
 
@@ -20,196 +20,261 @@ async def run_agent(user_message: str, user_id: str) -> str:
         user_id: The ID of the current user
 
     Returns:
-        The agent's response
+        The agent's response (always a friendly string, never technical errors)
     """
     try:
-        # Get Groq API key from settings
-        groq_api_key = settings.groq_api_key
+        # Get OpenAI API key from environment
+        openai_api_key = settings.openai_api_key
 
-        if not groq_api_key:
-            return "⚠️ AI Agent not configured: GROQ_API_KEY not set"
+        if not openai_api_key:
+            return "⚠️ AI Agent not configured: OPENAI_API_KEY not set"
 
-        # Disable tracing
-        set_tracing_disabled(disabled=True)
+        # Create custom AsyncOpenAI client for OpenRouter
+        openai_client = AsyncOpenAI(
+            api_key=openai_api_key,
+            base_url="https://openrouter.ai/api/v1"
+        )
 
-        # Configure global API
-        set_default_openai_api("chat_completions")
+        # Create OpenAI provider with custom client
+        model_provider = OpenAIProvider(openai_client=openai_client)
 
-        # Define tools as closures that capture user_id
-        @function_tool
-        def create_todo_task(title: str, description: str = "", priority: str = "medium") -> str:
-            """
-            Adds a new task to the user's todo list.
-
-            Args:
-                title: The title of the task (required)
-                description: Optional description of the task
-                priority: Priority level (low, medium, high)
-
-            Returns:
-                Success message with task details
-            """
-            try:
-                with Session(engine) as session:
-                    task_data = TaskCreate(
-                        title=title,
-                        description=description,
-                        priority=priority
-                    )
-                    task = create_task(session, task_data, user_id)
-                    return f"Created task: '{task.title}' (ID: {task.id}, Priority: {task.priority})"
-            except Exception as e:
-                return f"Error creating task: {str(e)}"
+        # Define tools - NO **kwargs to avoid Pydantic schema errors
 
         @function_tool
-        def list_my_tasks(filter: Optional[str] = None) -> str:
+        def list_my_tasks_args(filter: str = None) -> str:
             """
-            List all tasks for the user.
+            Retrieve and display all tasks for the current user.
+
+            This is the ONLY tool for listing tasks. Always return the full task list.
 
             Args:
-                filter: Optional. Not used. Leave empty.
+                filter: Optional filter parameter (currently ignored, accepts null)
 
             Returns:
-                Formatted list of all tasks
+                Formatted markdown list of all tasks with checkboxes
             """
             try:
                 with Session(engine) as session:
                     tasks = get_all_tasks(session, user_id)
-
                     if not tasks:
-                        return "You have no tasks."
+                        return "No tasks found."
 
-                    # Format tasks for display with plain text bullet points
-                    result = f"You have {len(tasks)} tasks:\n\n"
-                    for i, task in enumerate(tasks, 1):
-                        result += f"• {task.title}\n"
-                        result += f"  Status: {task.status}\n"
-                        result += f"  Priority: {task.priority}\n"
-                        if task.description:
-                            result += f"  Description: {task.description}\n"
-                        result += f"  ID: {task.id}\n\n"
+                    lines = ["Here are your tasks:\n"]
+                    for i, t in enumerate(tasks, 1):
+                        checkbox = "[✓]" if t.status == "completed" else "[ ]"
+                        priority = t.priority if t.priority else "medium"
+                        lines.append(f"{i}. {checkbox} {t.title} (priority: {priority})")
 
-                    return result
+                    return "\n".join(lines)
             except Exception as e:
-                return f"Error fetching tasks: {str(e)}"
+                return "Error fetching tasks."
 
         @function_tool
-        def update_existing_task(task_id: str, status: Optional[str] = None, priority: Optional[str] = None) -> str:
+        def add(name: str, priority: str = "medium") -> str:
             """
-            Updates an existing task's status, priority, or both.
+            Create a new task with the specified name and priority.
 
             Args:
-                task_id: The UUID of the task (required).
-                status: New status ('pending', 'in-progress', 'completed').
-                priority: New priority ('low', 'medium', 'high').
+                name: The title/name of the task to create
+                priority: Task priority level (low, medium, high). Defaults to medium
 
             Returns:
-                Success message with updated task details
+                Confirmation message with the created task name
             """
             try:
                 with Session(engine) as session:
-                    # Pass both to TaskUpdate model
-                    update_data = TaskUpdate(status=status, priority=priority)
-                    task = update_task(session, task_id, update_data, user_id)
-
-                    if not task:
-                        return f"Task {task_id} not found."
-
-                    return f"Updated task '{task.title}': Status={task.status}, Priority={task.priority}"
+                    task_data = TaskCreate(title=name, description="", priority=priority)
+                    task = create_task_service(session, task_data, user_id)
+                    return f"✓ Added task: '{task.title}' with {priority} priority"
             except Exception as e:
-                return f"Error: {str(e)}"
+                return "Error adding task."
 
         @function_tool
-        def delete_todo_task(task_id: str) -> str:
+        def remove(name: str) -> str:
             """
-            Deletes a task permanently from the user's todo list. Use this when the user wants to remove a task completely.
+            Delete a task by searching for its name.
 
             Args:
-                task_id: The UUID of the task to delete (required, must be a valid task ID from the user's task list)
+                name: The name of the task to remove (partial match supported)
 
             Returns:
-                A success message string confirming the deletion, or an error message if the task was not found
-
-            Example:
-                delete_todo_task("305a2d95-2adc-4f81-adce-2571104f6a80")
+                Confirmation message with the removed task name
             """
             try:
                 with Session(engine) as session:
-                    # First, get the task to verify it exists and belongs to the user
-                    from sqlmodel import select
-                    from ..models.task import Task
+                    tasks = get_all_tasks(session, user_id)
+                    if not tasks:
+                        return "No tasks found."
 
-                    statement = select(Task).where(Task.id == task_id, Task.user_id == user_id)
-                    task = session.exec(statement).first()
+                    task = None
+                    for t in tasks:
+                        if name.lower() in t.title.lower():
+                            task = t
+                            break
 
                     if not task:
-                        return f"Task not found with ID: {task_id}. Please check the task ID and try again."
+                        return f"Task not found: '{name}'"
 
                     task_title = task.title
-
-                    # Delete the task
                     session.delete(task)
                     session.commit()
 
-                    return f"Successfully deleted task '{task_title}'"
+                    return f"✓ Removed task: '{task_title}'"
             except Exception as e:
-                return f"Error deleting task: {str(e)}"
+                return "Error removing task."
 
-        # 1. Initialize the AsyncOpenAI client for Groq
-        client = AsyncOpenAI(
-            api_key=groq_api_key,
-            base_url="https://api.groq.com/openai/v1",
-        )
+        @function_tool
+        def update(name: str, status: str = None, priority: str = None) -> str:
+            """
+            Update a task's status or priority by searching for its name.
 
-        # 2. Set global client
-        set_default_openai_client(client)
+            Args:
+                name: The name of the task to update (partial match supported)
+                status: New status for the task (e.g., "completed", "pending")
+                priority: New priority for the task (e.g., "low", "medium", "high")
 
-        # 3. Initialize the Agent with model string
+            Returns:
+                Confirmation message with the updated task details
+            """
+            try:
+                with Session(engine) as session:
+                    tasks = get_all_tasks(session, user_id)
+                    if not tasks:
+                        return "No tasks found."
+
+                    task = None
+                    for t in tasks:
+                        if name.lower() in t.title.lower():
+                            task = t
+                            break
+
+                    if not task:
+                        return f"Task not found: '{name}'"
+
+                    # Build update data based on what was provided
+                    update_dict = {}
+                    if status is not None:
+                        update_dict["status"] = status
+                    if priority is not None:
+                        update_dict["priority"] = priority
+
+                    if not update_dict:
+                        return "No updates provided. Specify status or priority."
+
+                    update_data = TaskUpdate(**update_dict)
+                    updated_task = update_task_service(session, str(task.id), update_data, user_id)
+
+                    if updated_task:
+                        changes = []
+                        if status:
+                            changes.append(f"status: {status}")
+                        if priority:
+                            changes.append(f"priority: {priority}")
+                        return f"✓ Updated '{updated_task.title}' - {', '.join(changes)}"
+                    else:
+                        return "Failed to update task"
+            except Exception as e:
+                return "Error updating task."
+
+        # Create Agent with strict instructions (SDK will use env vars for client)
         agent = Agent(
-            name="Todo Assistant",
-            instructions="""You are a helpful task management assistant.
+            name="TaskManager",
+            instructions="""You are a task manager assistant. You can ONLY perform these specific actions:
 
-You can help users:
-- Create new tasks
-- List all tasks
-- Update task status (mark as pending, in-progress, or completed)
-- Update task priority (low, medium, high)
-- Delete tasks
+AVAILABLE TOOLS (use EXACTLY these names):
+1. list_my_tasks_args - To see all tasks
+   - When listing tasks, you MUST call list_my_tasks_args with filter=None
+   - Never use words like "fetch" or invent other tool names
+   - Example: list_my_tasks_args(filter=None)
 
-When a user asks to update or delete a task:
-1. First call list_my_tasks to see all tasks and their IDs
-2. Find the matching task by title
-3. Use the task's UUID to call update_existing_task or delete_todo_task
+2. add - To create a new task
+   - Required: name (task title)
+   - Optional: priority (low, medium, high)
+   - Example: add(name="Buy groceries", priority="high")
 
-When creating tasks from natural language (e.g., "meeting with Bilal at 5pm"):
-- Extract the main subject as the title
-- Put time/date details in the description
-- Set priority based on urgency (default: medium)
+3. remove - To delete a task
+   - Required: name (task to remove)
+   - Example: remove(name="Buy groceries")
 
-Always confirm what you did after completing an action.
-""",
-            model="llama-3.3-70b-versatile",
-            tools=[create_todo_task, list_my_tasks, update_existing_task, delete_todo_task]
+4. update - To change task status or priority
+   - Required: name (task to update)
+   - Optional: status ("completed" or "pending")
+   - Optional: priority ("low", "medium", "high")
+   - Example: update(name="Buy groceries", status="completed")
+
+FORMATTING RULES:
+When displaying tasks, use this exact format:
+1. [ ] Task Name (priority: medium)
+2. [✓] Completed Task (priority: high)
+
+- Use [ ] for incomplete tasks
+- Use [✓] for completed tasks
+- Always show priority level
+
+STRICT LIMITATIONS:
+- If a user asks for something you cannot do, politely deny and explain your limitations
+- Do NOT attempt to guess or invent tools
+- Do NOT use tool names other than the 4 listed above
+- You can ONLY: list tasks, add tasks, remove tasks, and update tasks
+- You CANNOT: search the web, send emails, access files, or perform any other actions
+
+BEHAVIOR:
+- When user asks to see/list/show tasks, call list_my_tasks_args(filter=None) and display the full results
+- Always show tool results to the user, don't just summarize
+- Be friendly and conversational
+- If you don't understand a request, ask for clarification""",
+            model="openai/gpt-4o-mini",
+            tools=[list_my_tasks_args, add, remove, update]
         )
 
-        # 4. Run the agent with the user message
+        # Run the agent with specific error handling and custom model provider
         try:
-            result = await Runner.run(agent, user_message)
+            run_config = RunConfig(
+                model_provider=model_provider,
+                tracing_disabled=True  # Disable tracing to avoid OpenAI API key errors
+            )
+            result = await Runner.run(agent, user_message, run_config=run_config)
 
-            # Ensure we always return a string response
+            # Debug logging
+            print("=" * 50)
+            print("DEBUG: Agent Result")
+            print("=" * 50)
+            print(f"Result Type: {type(result)}")
+            print(f"Result: {result}")
+            if hasattr(result, 'final_output'):
+                print(f"Final Output: {result.final_output}")
+            print("=" * 50)
+
+            # Extract response
             if result and hasattr(result, 'final_output') and result.final_output:
-                # Check if final_output is not just whitespace
-                if result.final_output.strip():
-                    return result.final_output
-                else:
-                    return "I have processed your request."
-            else:
-                # Fallback if no final_output
-                return "I have processed your request."
-        except Exception as runner_error:
-            return f"Agent error: {str(runner_error)}"
+                output = result.final_output.strip()
 
-    except ValueError as e:
-        return f"Configuration error: {str(e)}"
+                # Check for error indicators
+                error_keywords = [
+                    'Agent error', 'Error code', 'tool_use_failed',
+                    'invalid_request', 'failed_generation', '400', '500'
+                ]
+
+                if any(keyword in output for keyword in error_keywords):
+                    return "I encountered a problem with that specific request. Please try rephrasing, or ask me to 'list tasks', 'add a task', 'update a task', or 'remove a task'."
+
+                return output if output else "Done! Ask me to 'list tasks' to see your list."
+            else:
+                return "Done! Ask me to 'list tasks' to see your list."
+
+        except Exception as e:
+            error_msg = str(e)
+            print(f"Agent execution error: {error_msg}")
+
+            # Friendly error message instead of technical details
+            if "tool_use_failed" in error_msg or "400" in error_msg:
+                return "I encountered a problem with that specific request. Please try asking me to 'list my tasks', 'add task [name]', 'update [task] priority to [level]', or 'remove [task]'."
+            else:
+                return "I had trouble processing that request. Try: 'list tasks', 'add task [name]', 'mark [task] done', or 'delete [task]'."
+
     except Exception as e:
-        return f"Sorry, I encountered an error: {str(e)}"
+        error_msg = str(e)
+        print(f"Agent setup error: {error_msg}")
+        return "I'm having trouble starting up. Please try again in a moment."
+
+

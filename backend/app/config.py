@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     debug: bool = False
     gemini_api_key: Optional[str] = None  # Gemini API key for AI agent
     groq_api_key: Optional[str] = None  # Groq API key for AI agent
+    openai_api_key: Optional[str] = None  # OpenAI API key for AI agent
 
     class Config:
         env_file = ".env"
@@ -34,6 +35,10 @@ if os.getenv("DATABASE_URL"):
 if os.getenv("GROQ_API_KEY"):
     settings.groq_api_key = os.getenv("GROQ_API_KEY")
     print("✅ GROQ_API_KEY loaded from environment")
+
+if os.getenv("OPENAI_API_KEY"):
+    settings.openai_api_key = os.getenv("OPENAI_API_KEY")
+    print("✅ OPENAI_API_KEY loaded from environment")
 
 if os.getenv("DB_ECHO"):
     settings.db_echo = os.getenv("DB_ECHO").lower() == "true"
