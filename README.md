@@ -1,22 +1,24 @@
-# Todo Application - AI Native Development
+# Evolution of Todo - AI Native Development
 
 ## 🎯 Project Overview
 
 A full-stack, cloud-native task management application with AI-powered natural language interface, deployed on Kubernetes. Built following Spec-Driven Development (SDD) methodology with comprehensive specifications and architectural decision records.
 
-**Current Status:** ✅ Phase 4 Complete - Production-Ready Kubernetes Deployment
+**Repository:** https://github.com/Bilal-Gulzar/evolution-of-todo
+
+**Current Status:** ✅ Phase IV Complete - Production-Ready Kubernetes Deployment
 
 ---
 
 ## 📋 Phase Summary
 
 ### Phase 1: Foundation ✅
-- Next.js 14 frontend with TypeScript
-- Tailwind CSS styling
+- Vite + React 19 frontend with TypeScript
+- Tailwind CSS + Shadcn/ui styling
 - Basic task management UI
 
 ### Phase 2: Full-Stack Integration ✅
-- FastAPI backend with Python
+- FastAPI backend with Python 3.12
 - PostgreSQL database (Neon)
 - JWT authentication
 - RESTful API endpoints
@@ -29,10 +31,11 @@ A full-stack, cloud-native task management application with AI-powered natural l
 
 ### Phase 4: Cloud-Native Deployment ✅
 - Kubernetes orchestration (Minikube)
-- Docker containerization
+- Docker containerization with multi-stage builds
 - Horizontal scaling (2 replicas per service)
-- Secure secret management
-- Zero-downtime deployments
+- Secure secret management (Kubernetes Secrets)
+- Zero-downtime rolling updates
+- Automated deployment script
 
 ---
 
@@ -46,7 +49,7 @@ A full-stack, cloud-native task management application with AI-powered natural l
 │                                         │
 │  Frontend (NodePort:30080)              │
 │    ↓ 2 replicas                         │
-│    ↓ Next.js + TypeScript               │
+│    ↓ Vite + React + Nginx               │
 │    ↓                                    │
 │    → Backend (ClusterIP:8000)           │
 │        ↓ 2 replicas                     │
@@ -88,29 +91,47 @@ A full-stack, cloud-native task management application with AI-powered natural l
 - Neon PostgreSQL database created
 - Groq API key obtained
 
-#### Quick Start
+#### Quick Start (Automated)
+
+```bash
+# One-command deployment
+bash deploy.sh
+```
+
+The script will:
+1. Check prerequisites (Minikube, kubectl, Docker)
+2. Start Minikube if not running
+3. Configure Docker environment
+4. Build Docker images
+5. Create secrets (prompts for values)
+6. Deploy all Kubernetes resources
+7. Wait for deployments to be ready
+8. Display access URL
+
+#### Manual Deployment
 
 ```bash
 # 1. Start Minikube
 minikube start --driver=docker
 
 # 2. Configure Docker to use Minikube's daemon
-# Windows (PowerShell):
-& minikube -p minikube docker-env --shell powershell | Invoke-Expression
-
 # Linux/Mac:
 eval $(minikube docker-env)
+# Windows (PowerShell):
+& minikube -p minikube docker-env --shell powershell | Invoke-Expression
 
 # 3. Build Docker images
 docker build -t todo-backend:latest ./backend
 docker build -t todo-frontend:latest \
-  --build-arg NEXT_PUBLIC_API_URL=http://backend-service:8000 \
+  --build-arg VITE_API_URL=http://backend-service:8000/api/v1 \
   ./frontend
 
-# 4. Create Kubernetes secrets (replace with your actual values)
+# 4. Create Kubernetes secrets
+bash k8s/create-secrets.sh
+# Or manually:
 kubectl create secret generic todo-secrets \
-  --from-literal=DATABASE_URL="postgresql://YOUR_USER:YOUR_PASSWORD@YOUR_HOST.neon.tech/YOUR_DB?sslmode=require" \
-  --from-literal=GROQ_API_KEY="YOUR_GROQ_API_KEY"
+  --from-literal=DATABASE_URL="postgresql://user:pass@host.neon.tech/db?sslmode=require" \
+  --from-literal=OPENAI_API_KEY="gsk_..."
 
 # 5. Deploy to Kubernetes
 kubectl apply -f k8s/backend-deployment.yaml
@@ -118,13 +139,13 @@ kubectl apply -f k8s/backend-service.yaml
 kubectl apply -f k8s/frontend-deployment.yaml
 kubectl apply -f k8s/frontend-service.yaml
 
-# 6. Verify deployment
-kubectl get pods
-kubectl get svc
+# 6. Wait for deployments
+kubectl rollout status deployment/backend-deployment
+kubectl rollout status deployment/frontend-deployment
 
 # 7. Access the application
 minikube service frontend-service
-# Or manually: http://<minikube-ip>:30080
+# Or get URL: http://$(minikube ip):30080
 ```
 
 #### Verification Commands
@@ -216,24 +237,29 @@ docker-compose down -v
 - **LLM:** Groq API (Llama 3.3 70B Versatile)
 
 ### Frontend
-- **Framework:** Next.js 14
+- **Framework:** Vite + React 19
 - **Language:** TypeScript
-- **Styling:** Tailwind CSS
-- **State Management:** React Hooks
+- **Styling:** Tailwind CSS + Shadcn/ui
+- **State Management:** React Hooks + TanStack Query
 - **Authentication:** JWT tokens (client-side)
+- **Production Server:** Nginx (in Docker)
 
 ### Infrastructure
 - **Orchestration:** Kubernetes (Minikube for local)
 - **Containerization:** Docker (multi-stage builds)
-- **Secrets:** Kubernetes Secrets
+  - Backend: Python 3.12-slim with uv package manager
+  - Frontend: Node 20-alpine builder + Nginx alpine runtime
+- **Secrets:** Kubernetes Secrets (base64 encoded)
 - **Services:** ClusterIP (backend), NodePort (frontend)
+- **Health Checks:** Liveness + Readiness probes
+- **Resource Limits:** 256Mi-512Mi memory, 250m-500m CPU per pod
 
 ---
 
 ## 📁 Project Structure
 
 ```
-todo-phase-1/
+evolution-of-todo/
 ├── backend/
 │   ├── app/
 │   │   ├── agents/          # AI agent implementation

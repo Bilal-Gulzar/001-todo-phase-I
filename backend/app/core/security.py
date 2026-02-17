@@ -19,6 +19,8 @@ def hash_password(password: str) -> str:
     """
     Hash a plain text password.
 
+    Note: Bcrypt has a 72-byte limit. Passlib handles this automatically.
+
     Args:
         password: Plain text password
 
@@ -31,6 +33,8 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify a plain text password against a hashed password.
+
+    Note: Bcrypt has a 72-byte limit. Passlib handles this automatically.
 
     Args:
         plain_password: Plain text password to verify

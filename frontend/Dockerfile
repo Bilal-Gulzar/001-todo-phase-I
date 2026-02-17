@@ -1,4 +1,6 @@
-# Stage 1: Build the Next.js application
+# Multi-stage build for Vite React frontend
+
+# Stage 1: Builder - Build the React application
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -6,35 +8,63 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (using npm install to handle lockfile mismatches)
+# Install dependencies
 RUN npm install
 
-# Copy application code
+# Copy source code
 COPY . .
 
-# Accept build-time argument for API URL
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+# Build argument for API URL
+ARG VITE_API_URL=http://backend-service:8000/api/v1
+ENV VITE_API_URL=$VITE_API_URL
 
-# Build the Next.js application
+# Build the application
 RUN npm run build
 
-# Stage 2: Production runtime
-FROM node:20-alpine AS runner
+# Stage 2: Runtime - Serve with nginx
+FROM nginx:alpine
 
-WORKDIR /app
+# Copy built assets from builder
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Set to production
-ENV NODE_ENV=production
+# Copy nginx configuration
+COPY <<EOF /etc/nginx/conf.d/default.conf
+server {
+    listen 3000;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
 
-# Copy necessary files from builder
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
+    # Enable gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+    # SPA routing - serve index.html for all routes
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    # Cache static assets
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Health check endpoint
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+}
+EOF
 
 # Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

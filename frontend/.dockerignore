@@ -1,43 +1,50 @@
 # Dependencies
-node_modules
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
-yarn.lock
+pnpm-debug.log*
 
-# Build outputs
-.next
-out
-build
-dist
-
-# Environment files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Next.js
+.next/
+out/
+dist/
+build/
 
 # Testing
-coverage
-.nyc_output
+coverage/
+.nyc_output/
+
+# Environment variables
+.env
+.env.*
+*.env
+!.env.example
 
 # IDE
-.vscode
-.idea
+.vscode/
+.idea/
 *.swp
 *.swo
 *~
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+README*
+docs/
+
+# Logs
+*.log
+logs/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Git
-.git
-.gitignore
-
 # Misc
-*.log
-.cache
+.eslintcache
+.turbo

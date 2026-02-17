@@ -1,6 +1,6 @@
-# Todo Backend API
+# Evolution of Todo - Backend API
 
-This is the backend API for the Todo application, built with FastAPI and SQLModel.
+This is the backend API for the Evolution of Todo application, built with FastAPI and SQLModel.
 
 ## Features
 
@@ -38,7 +38,7 @@ All endpoints are prefixed with `/api/v1`
 
 3. Run the application:
    ```bash
-   python -m uvicorn app.main:app --reload --port 8000
+   python -m uvicorn app.main:app --reload --port 8001
    ```
 
 ## Testing

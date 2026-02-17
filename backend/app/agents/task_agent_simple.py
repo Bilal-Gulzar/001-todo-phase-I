@@ -6,7 +6,7 @@ from openai import AsyncOpenAI
 from sqlmodel import Session
 import json
 from ..database import engine
-from ..services.task_service import create_task as create_task_service, get_all_tasks, update_task as update_task_service
+from ..services.task_service import create_task as create_task_service, get_all_tasks, update_task as update_task_service, delete_task as delete_task_service
 from ..models.task import TaskCreate, TaskUpdate
 from ..config import settings
 
@@ -21,6 +21,22 @@ async def run_agent(user_message: str, user_id: str) -> str:
         openai_api_key = settings.openai_api_key
         if not openai_api_key:
             return "⚠️ AI Agent not configured: OPENAI_API_KEY not set"
+
+        # Preprocess: Detect rename intent and make it explicit
+        import re
+        rename_patterns = [
+            r'rename\s+(?:task\s+)?(.+?)\s+to\s+(.+)',
+            r'change\s+(?:task\s+)?(.+?)\s+to\s+(.+)',
+            r'update\s+(?:the\s+)?name\s+of\s+(.+?)\s+to\s+(.+)',
+            r'call\s+(.+?)\s+(?:as\s+)?(.+)'
+        ]
+
+        for pattern in rename_patterns:
+            match = re.search(pattern, user_message.lower())
+            if match:
+                # Add explicit instruction to use rename function
+                user_message = f"{user_message}\n\n[SYSTEM INSTRUCTION: This is a RENAME request. You MUST use the 'rename' function with current_name='{match.group(1).strip()}' and new_name='{match.group(2).strip()}'. DO NOT suggest removing and adding.]"
+                break
 
         # Create OpenAI client for OpenRouter
         client = AsyncOpenAI(
@@ -91,13 +107,13 @@ async def run_agent(user_message: str, user_id: str) -> str:
                 "type": "function",
                 "function": {
                     "name": "update",
-                    "description": "Update a task's status or priority",
+                    "description": "Update a task's status or priority (NOT for renaming - use rename function instead)",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "name": {
                                 "type": "string",
-                                "description": "The task name to update"
+                                "description": "The current task name to update"
                             },
                             "status": {
                                 "type": "string",
@@ -115,22 +131,50 @@ async def run_agent(user_message: str, user_id: str) -> str:
                         "required": ["name"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "rename",
+                    "description": "RENAME A TASK - Use this function whenever the user wants to change a task's name. Trigger phrases: 'rename X to Y', 'change X to Y', 'update name of X to Y', 'call X as Y'. Example: User says 'rename clean house to kitchen' -> call rename(current_name='clean house', new_name='kitchen'). DO NOT suggest removing and adding - just call this function.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "current_name": {
+                                "type": "string",
+                                "description": "The current task name to be renamed"
+                            },
+                            "new_name": {
+                                "type": "string",
+                                "description": "The new name for the task"
+                            }
+                        },
+                        "required": ["current_name", "new_name"]
+                    }
+                }
             }
         ]
 
-        # System message
-        system_message = """You are a task manager assistant. You can ONLY perform these actions:
+        # System message with explicit rename instructions
+        system_message = """You are a task manager assistant.
 
-1. list_my_tasks_args - List all tasks (call with filter=None)
-2. add - Create a new task (requires name, optional priority)
-3. remove - Delete a task (requires name)
-4. update - Update task status or priority (requires name, optional status/priority)
+AVAILABLE FUNCTIONS:
+1. list_my_tasks_args - List all tasks
+2. add - Create a new task (name, priority)
+3. remove - Delete a task (name)
+4. update - Change task status or priority ONLY
+5. rename - Change a task's name (current_name, new_name)
+
+CRITICAL: When user wants to change a task's name, you MUST use the 'rename' function.
+DO NOT suggest removing and adding a new task. ALWAYS use rename.
+
+Trigger words for rename: "rename", "change name", "update name", "call it"
 
 FORMATTING: Display tasks as:
 1. [ ] Task Name (priority: medium)
 2. [✓] Completed Task (priority: high)
 
-Always show tool results to the user. Be friendly and conversational."""
+Be friendly and conversational."""
 
         # Call the API with GPT-4o-mini via OpenRouter
         response = await client.chat.completions.create(
@@ -239,10 +283,13 @@ async def execute_function(function_name: str, arguments: dict, user_id: str) ->
                 if not task:
                     return f"❌ Task not found: '{name}'"
 
-                task_title = task.title
-                session.delete(task)
-                session.commit()
-                return f"🗑️ Removed task: **{task_title}**"
+                task_id = str(task.id)
+                success = delete_task_service(session, task_id, user_id)
+
+                if success:
+                    return f"🗑️ Removed task: **{task.title}**"
+                else:
+                    return f"❌ Failed to remove task: '{name}'"
 
             elif function_name == "update":
                 name = arguments.get("name")
@@ -281,6 +328,29 @@ async def execute_function(function_name: str, arguments: dict, user_id: str) ->
                 if priority:
                     changes.append(f"priority: {priority}")
                 return f"✏️ Updated **{updated_task.title}** - {', '.join(changes)}"
+
+            elif function_name == "rename":
+                current_name = arguments.get("current_name")
+                new_name = arguments.get("new_name")
+
+                tasks = get_all_tasks(session, user_id)
+                task = None
+                for t in tasks:
+                    if current_name.lower() in t.title.lower():
+                        task = t
+                        break
+
+                if not task:
+                    return f"❌ Task not found: '{current_name}'"
+
+                update_data = TaskUpdate(title=new_name)
+                updated_task = update_task_service(session, str(task.id), update_data, user_id)
+                # Service already commits - no need for extra commit
+
+                if not updated_task:
+                    return f"❌ Failed to rename task: '{current_name}'"
+
+                return f"✏️ Renamed task from '**{current_name}**' to '**{updated_task.title}**'"
 
             else:
                 return f"❌ Unknown function: {function_name}"

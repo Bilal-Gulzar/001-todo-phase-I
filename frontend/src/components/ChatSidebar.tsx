@@ -1,219 +1,151 @@
-'use client';
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Bot, Send, X, MessageSquare } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import { cn } from "@/lib/utils";
+import { tokenManager } from "@/lib/api";
 
-import { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+type Msg = { role: "user" | "assistant"; content: string };
 
-interface Message {
-  id: number;
-  role: 'user' | 'assistant';
-  content: string;
-}
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
+const CHAT_URL = `${API_BASE_URL}/chat`;
 
-interface ChatSidebarProps {
-  onTasksChange?: () => void;
-}
-
-export default function ChatSidebar({ onTasksChange }: ChatSidebarProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputValue, setInputValue] = useState('');
+export default function ChatSidebar({ open, onClose, onTaskChange }: { open: boolean; onClose: () => void; onTaskChange?: () => void }) {
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { token } = useAuth();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || isLoading) return;
+  const send = async () => {
+    const text = input.trim();
+    if (!text || isLoading) return;
+    setInput("");
 
-    const userMsg: Message = {
-      id: Date.now(),
-      role: 'user',
-      content: text
-    };
-
-    setMessages(prev => [...prev, userMsg]);
-    setInputValue('');
+    const userMsg: Msg = { role: "user", content: text };
+    setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api/v1';
-      console.log('Sending chat request to:', `${apiUrl}/chat`);
-      console.log('Token:', token ? 'Present' : 'Missing');
+      const token = tokenManager.getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
 
-      const response = await fetch(`${apiUrl}/chat`, {
-        method: 'POST',
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           message: text,
-          history: messages.map(m => ({
-            role: m.role,
-            content: m.content
-          }))
-        })
+          history: messages.map(m => ({ role: m.role, content: m.content }))
+        }),
       });
 
-      console.log('Response status:', response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        console.error('API Error:', errorData);
-        throw new Error(errorData.detail || `API Error: ${response.status}`);
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to get response");
       }
 
-      const data = await response.json();
+      const data = await resp.json();
+      setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
 
-      // Filter out function call XML tags from the response using regex
-      let cleanedResponse = data.response || '';
-      if (cleanedResponse) {
-        cleanedResponse = cleanedResponse.replace(/<function[\s\S]*?<\/function>/g, '').trim();
+      // Only refresh task list if AI performed a CRUD operation
+      const response = data.response.toLowerCase();
+      const crudKeywords = [
+        'added', 'created', 'new task',
+        'deleted', 'removed',
+        'updated', 'changed', 'modified',
+        'marked', 'completed', 'done',
+        '📋', '✓', '✅'
+      ];
+
+      const hasCrudOperation = crudKeywords.some(keyword => response.includes(keyword));
+      if (hasCrudOperation) {
+        onTaskChange?.();
       }
-
-      // Handle empty or null responses (tool calls in progress)
-      if (!cleanedResponse || cleanedResponse.length === 0) {
-        cleanedResponse = 'Task updated successfully!';
-      }
-
-      const assistantMsg: Message = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: cleanedResponse
-      };
-
-      setMessages(prev => [...prev, assistantMsg]);
-
-      // CRITICAL: Always refresh tasks after AI response (Read-After-Write pattern)
-      console.log('🔄 Refreshing tasks after AI response');
-      if (onTasksChange) {
-        onTasksChange();
-      }
-    } catch (error) {
-      console.error('Chat error:', error);
-
-      const errorMsg: Message = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please check the console for details.`
-      };
-
-      setMessages(prev => [...prev, errorMsg]);
+    } catch (e: any) {
+      setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e.message}` }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    sendMessage(inputValue);
-  };
+  if (!open) return null;
 
   return (
-    <>
-      {/* Floating chat button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center w-14 h-14"
-        aria-label="Toggle chat"
-      >
-        {isOpen ? (
-          <span className="text-2xl">✕</span>
-        ) : (
-          <span className="text-2xl">💬</span>
-        )}
-      </button>
-
-      {/* Chat sidebar panel */}
-      {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-96 h-[600px] bg-white rounded-lg shadow-2xl flex flex-col border border-gray-200">
-          {/* Header */}
-          <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-blue-600 text-white rounded-t-lg">
-            <div>
-              <h3 className="font-bold text-lg">AI Assistant</h3>
-              <p className="text-xs text-blue-100">Ask me about your tasks</p>
-            </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:text-blue-100 text-xl"
-              aria-label="Close chat"
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* Messages area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-            {messages.length === 0 && (
-              <div className="text-center text-gray-500 mt-8">
-                <p className="text-sm text-gray-700">👋 Hi! I'm your AI assistant.</p>
-                <p className="text-xs mt-2 text-gray-600">Try asking:</p>
-                <ul className="text-xs mt-2 space-y-1 text-gray-600">
-                  <li>"Show me my tasks"</li>
-                  <li>"Add a meeting with Bilal at 5pm"</li>
-                  <li>"What should I do first?"</li>
-                </ul>
-              </div>
-            )}
-
-            {messages.map(msg => (
-              <div
-                key={msg.id}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] p-3 rounded-lg ${
-                    msg.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-br-none'
-                      : 'bg-white text-slate-900 border border-gray-200 rounded-bl-none shadow-sm'
-                  }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap break-words text-slate-900">{msg.content}</p>
-                </div>
-              </div>
-            ))}
-
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-white text-gray-900 border border-gray-200 p-3 rounded-lg rounded-bl-none shadow-sm">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input area */}
-          <div className="p-4 border-t border-gray-200 bg-white rounded-b-lg">
-            <form onSubmit={handleSubmit} className="flex space-x-2">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Ask me anything..."
-                className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-slate-900"
-                disabled={isLoading}
-              />
-              <button
-                type="submit"
-                disabled={isLoading || !inputValue.trim()}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200 text-sm font-medium"
-              >
-                Send
-              </button>
-            </form>
-          </div>
+    <div className={cn(
+      "fixed inset-y-0 left-0 z-40 flex w-80 flex-col border-r border-border bg-sidebar transition-transform duration-300",
+      "translate-x-0"
+    )}>
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Bot className="h-5 w-5 text-primary" />
+          AI Assistant
         </div>
-      )}
-    </>
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Messages */}
+      <ScrollArea className="flex-1 px-4 py-3">
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+            <MessageSquare className="mb-3 h-10 w-10 opacity-30" />
+            <p className="text-sm">Ask me anything about your tasks or just chat!</p>
+          </div>
+        )}
+        {messages.map((m, i) => (
+          <div key={i} className={cn("mb-3", m.role === "user" ? "text-right" : "text-left")}>
+            <div className={cn(
+              "inline-block max-w-[90%] rounded-xl px-3 py-2 text-sm",
+              m.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"
+            )}>
+              {m.role === "assistant" ? (
+                <div className="prose prose-sm prose-invert max-w-none">
+                  <ReactMarkdown>{m.content}</ReactMarkdown>
+                </div>
+              ) : m.content}
+            </div>
+          </div>
+        ))}
+        {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
+          <div className="mb-3 text-left">
+            <div className="inline-block rounded-xl bg-secondary px-3 py-2 text-sm text-muted-foreground animate-pulse-glow">
+              Thinking...
+            </div>
+          </div>
+        )}
+        <div ref={scrollRef} />
+      </ScrollArea>
+
+      {/* Input */}
+      <div className="border-t border-border p-3">
+        <form
+          onSubmit={(e) => { e.preventDefault(); send(); }}
+          className="flex gap-2"
+        >
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask the AI..."
+            className="flex-1 bg-secondary border-none text-sm"
+            disabled={isLoading}
+          />
+          <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+            <Send className="h-4 w-4" />
+          </Button>
+        </form>
+      </div>
+    </div>
   );
 }

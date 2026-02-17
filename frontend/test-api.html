@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Connection Test</title>
+</head>
+<body>
+    <h1>Testing API Connection</h1>
+    <div id="result"></div>
+    <script>
+        const API_URL = 'http://localhost:8001/api/v1';
+
+        fetch(`${API_URL}/health`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('result').innerHTML =
+                    `<p style="color: green;">✓ Backend Connected: ${JSON.stringify(data)}</p>
+                     <p>API URL: ${API_URL}</p>`;
+            })
+            .catch(err => {
+                document.getElementById('result').innerHTML =
+                    `<p style="color: red;">✗ Backend Connection Failed: ${err.message}</p>
+                     <p>API URL: ${API_URL}</p>`;
+            });
+    </script>
+</body>
+</html>
